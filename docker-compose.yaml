@@ -96,6 +96,7 @@ services:
       POSTGRES_URL: "postgresql://user:password@postgres:5432/mydb"
     volumes:
       - ./producer/producer.py:/app/producer.py
+    command: ["conda", "run", "--no-capture-output", "-n", "env_name", "python", "producer.py"]
 #
 #  consumer:
 #    build: ./consumer

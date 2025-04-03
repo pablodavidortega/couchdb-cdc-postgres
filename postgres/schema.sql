@@ -1,9 +1,13 @@
-CREATE TABLE IF NOT EXISTS sequence_id (
-    database_name TEXT PRIMARY KEY,
+-- Ensure the schema exists
+CREATE SCHEMA IF NOT EXISTS mydb;
+
+-- Create the `db_sequence_id` table inside `mydb` schema
+CREATE TABLE IF NOT EXISTS mydb.db_sequence_id (
+    database TEXT PRIMARY KEY,
     seq_id TEXT NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS processed_data (
+CREATE TABLE IF NOT EXISTS mydb.processed_data (
     id SERIAL PRIMARY KEY,
     data JSONB NOT NULL
 );
