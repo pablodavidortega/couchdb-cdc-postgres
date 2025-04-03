@@ -26,7 +26,7 @@ def get_last_seq_id():
             id SERIAL PRIMARY KEY,
             seq_id TEXT NOT NULL
         );
-    """)
+    """) #todo probably here we want to change it to have the primary key be db_name rather than some serial key
     cursor.execute("SELECT seq_id FROM sequence_id ORDER BY id DESC LIMIT 1;")
     last_seq = cursor.fetchone()
     cursor.close()
