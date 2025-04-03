@@ -18,7 +18,7 @@ POSTGRES_URL = os.getenv("POSTGRES_URL")
 def get_postgres_connection():
     return psycopg2.connect(POSTGRES_URL)
 
-def save_seq_id(seq_id):
+def get_last_seq_id():
     conn = get_postgres_connection()
     cursor = conn.cursor()
     cursor.execute("""
@@ -26,7 +26,16 @@ def save_seq_id(seq_id):
             id SERIAL PRIMARY KEY,
             seq_id TEXT NOT NULL
         );
-    """)# we can probably remove this and put it in the sql file that gets booted with the docker postgres
+    """)
+    cursor.execute("SELECT seq_id FROM sequence_id ORDER BY id DESC LIMIT 1;")
+    last_seq = cursor.fetchone()
+    cursor.close()
+    conn.close()
+    return last_seq[0] if last_seq else "0"
+
+def save_seq_id(seq_id):
+    conn = get_postgres_connection()
+    cursor = conn.cursor()
     cursor.execute("INSERT INTO sequence_id (seq_id) VALUES (%s)", (seq_id,))
     conn.commit()
     cursor.close()
@@ -40,16 +49,19 @@ producer = KafkaProducer(
 
 logger.info("Kafka Producer started")
 
+last_seq_id = get_last_seq_id()
+logger.info(f"Starting from seq_id: {last_seq_id}")
+
 while True:
     try:
-        response = requests.get(COUCHDB_URL, params={"feed": "continuous", "since": "now", "include_docs": "true"}, stream=True)
+        response = requests.get(COUCHDB_URL, params={"feed": "continuous", "since": last_seq_id, "include_docs": "true"}, stream=True)
         for line in response.iter_lines():
             if line:
                 data = json.loads(line)
                 producer.send(KAFKA_TOPIC, data)
                 save_seq_id(data.get("seq"))
+                last_seq_id = data.get("seq")
                 logger.info(f"Sent message to Kafka: {data}")
-        logger.info(f"Waiting 5 seconds before retrying a new connection")
         time.sleep(5)  # Prevent excessive requests
     except Exception as e:
         logger.error(f"Error in producer: {e}")
