@@ -1,5 +1,5 @@
-CREATE TABLE IF NOT EXISTS sequence_id (
-    id SERIAL PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS db_sequence_id (
+    database TEXT PRIMARY KEY,
     seq_id TEXT NOT NULL
 );
 

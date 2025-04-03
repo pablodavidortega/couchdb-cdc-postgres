@@ -82,18 +82,20 @@ services:
       - ./document_writer/document_writer.py:/app/document_writer.py
     command: ["conda", "run", "--no-capture-output", "-n", "env_name", "python", "document_writer.py"]
 
-
-#  producer:
-#    build: ./producer
-#    depends_on:
-#      - kafka1
-#      - kafka2
-#      - kafka3
-#      - postgres
-#    environment:
-#      COUCHDB_URL: "http://couchdb:5984/mydb/_changes"
-#      KAFKA_TOPIC: "my-topic"
-#      POSTGRES_URL: "postgresql://user:password@postgres:5432/mydb"
+  producer:
+    build: ./producer
+    depends_on:
+      - kafka1
+      - kafka2
+      - kafka3
+      - postgres
+    environment:
+      COUCHDB_URL: "http://couchdb:5984"
+      DB_NAME : "mydb"
+      KAFKA_TOPIC: "my-topic"
+      POSTGRES_URL: "postgresql://user:password@postgres:5432/mydb"
+    volumes:
+      - ./producer/producer.py:/app/producer.py
 #
 #  consumer:
 #    build: ./consumer

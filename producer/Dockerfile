@@ -18,7 +18,3 @@ RUN conda install -n env_name -y \
     psycopg2 \
     kafka-python \
     && conda clean --all -f -y
-
-COPY producer.py ./
-
-CMD ["conda", "run", "--no-capture-output", "-n", "env_name", "python", "producer.py"]
