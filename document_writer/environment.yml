@@ -1,0 +1,12 @@
+name: env_name
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python=3.12
+  - requests
+  - psycopg2-binary
+  - kafka-python
+  - pip
+  - pip:
+      - requests

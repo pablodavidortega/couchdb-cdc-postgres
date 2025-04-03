@@ -59,6 +59,30 @@ services:
       - "5984:5984"
     volumes:
       - ./couchdb/data:/opt/couchdb/data
+
+  couchdb_setup:
+    image: alpine/curl
+    volumes:
+      - ./couchdb/docker_configure_couchdb.sh:/docker_configure_couchdb.sh
+    command: ["sh", "docker_configure_couchdb.sh"]
+    depends_on:
+      - couchdb
+
+  document_writer:
+    build: ./document_writer
+    depends_on:
+      - couchdb
+    environment:
+      COUCHDB_URL : "http://couchdb:5984"
+      COUCHDB_USER : "admin"
+      COUCHDB_PASSWORD : "password"
+      DB_NAME : "mydb"
+      LOG_LEVEL: "WARNING"
+    volumes:
+      - ./document_writer/document_writer.py:/app/document_writer.py
+    command: ["conda", "run", "--no-capture-output", "-n", "env_name", "python", "document_writer.py"]
+
+
 #  producer:
 #    build: ./producer
 #    depends_on:

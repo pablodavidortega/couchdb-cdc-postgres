@@ -2,7 +2,7 @@
 # Configures CouchDB JWT Authentication Public Key
 
 # Part1: Setup
-COUCHDB_URL="http://localhost:5984"
+COUCHDB_URL="http://couchdb:5984"
 COUCHDB_USER=admin
 COUCHDB_PASSWORD=password
 
@@ -94,5 +94,6 @@ couch_put "/_node/nonode@nohost/_config/jwt_keys/rsa:${kid}" "@formatted.key"
 # Path to roles
 couch_put "/_node/nonode@nohost/_config/jwt_auth/roles_claim_path" '"resource_access.security\\.settings.account.roles"'
 
+couch_put "/_node/_local/_config/log/level" '"warning"'
 # Restart CouchDB
 couch_post "/_node/_local/_restart"
