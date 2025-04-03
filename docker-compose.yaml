@@ -46,9 +46,21 @@ services:
       POSTGRES_PASSWORD: password
       POSTGRES_DB: mydb
     volumes:
-      - ./postgres/schema.sql:/docker-entrypoint-initdb.d/
+      - ./postgres/schema.sql:/docker-entrypoint-initdb.d/schema.sql
     ports:
       - "5432:5432"
+
+  couchdb:
+    image: couchdb:latest
+    environment:
+      COUCHDB_USER: admin
+      COUCHDB_PASSWORD: password
+    ports:
+      - "5984:5984"
+    volumes:
+      - ./couchdb/data:/opt/couchdb/data
+      - ./couchdb/setup-cluster.sh:/scripts/setup-cluster.sh
+    entrypoint: ["/bin/bash", "-c", "/scripts/setup-cluster.sh & docker-entrypoint.sh"]
 #
 #  producer:
 #    build: ./producer
