@@ -59,9 +59,6 @@ services:
       - "5984:5984"
     volumes:
       - ./couchdb/data:/opt/couchdb/data
-      - ./couchdb/setup-cluster.sh:/scripts/setup-cluster.sh
-    entrypoint: ["/bin/bash", "-c", "/scripts/setup-cluster.sh & docker-entrypoint.sh"]
-#
 #  producer:
 #    build: ./producer
 #    depends_on:
