@@ -1,0 +1,9 @@
+CREATE TABLE IF NOT EXISTS sequence_id (
+    id SERIAL PRIMARY KEY,
+    seq_id TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS processed_data (
+    id SERIAL PRIMARY KEY,
+    data JSONB NOT NULL
+);
