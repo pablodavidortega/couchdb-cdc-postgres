@@ -1,0 +1,11 @@
+name: env_name
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python=3.8
+  - psycopg2
+  - kafka-python
+  - pip
+  - pip:
+      - psycopg2

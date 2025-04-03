@@ -51,7 +51,7 @@ services:
       - "5432:5432"
 
   producer:
-    build: ../producer
+    build: ./producer
     depends_on:
       - kafka1
       - kafka2
@@ -63,7 +63,7 @@ services:
       POSTGRES_URL: "postgresql://user:password@postgres:5432/mydb"
 
   consumer:
-    build: ../consumer
+    build: ./consumer
     depends_on:
       - kafka1
       - kafka2
