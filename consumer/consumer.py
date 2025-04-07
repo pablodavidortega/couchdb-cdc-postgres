@@ -30,15 +30,16 @@ def insert_processed_data(conn, message):
     """
     try:
         with conn.cursor() as cursor:
+            document = message.get("document", None)
             cursor.execute(
                 insert_query,
                 (
                     message["database"],  # Make sure 'database' is included in the message
-                    message["doc_id"],
+                    message["data"]["id"],
                     epoch_ms_to_utc(message["change_ts"]),
-                    message["seq_id"],
-                    message["rev"],
-                    Json(message["document"]),  # Handles JSONB insertion properly
+                    message["data"]["seq"],
+                    message["data"]["changes"][0]["rev"],
+                    document,  # Handles JSONB insertion properly
                 )
             )
         conn.commit()
@@ -58,25 +59,27 @@ def consume_messages():
         bootstrap_servers=["kafka1:9092", "kafka2:9093", "kafka3:9094"],
         value_deserializer=lambda v: json.loads(v.decode("utf-8")),
         auto_offset_reset='earliest',
-        enable_auto_commit=False  # Manual commit mode
+        enable_auto_commit=False
     )
 
-    with consumer, psycopg2.connect(POSTGRES_URL) as conn:
-        logger.info("Consumer and DB connection established. Waiting for messages...")
-        for message in consumer:
-            try:
-                data = message.value
-                is_success = insert_processed_data(conn, data)
+    try:
+        with psycopg2.connect(POSTGRES_URL) as conn:
+            logger.info("Consumer and DB connection established. Waiting for messages...")
+            for message in consumer:
+                try:
+                    data = message.value
+                    is_success = insert_processed_data(conn, data)
 
-                if is_success:
-                    # Manually commit the offset after successful DB commit
-                    consumer.commit()
-                    logger.debug(f"Successfully processed and committed message: {data}")
-                else:
-                    logger.warning(f"Insert failed, message will be reprocessed: {data}")
+                    if is_success:
+                        consumer.commit()
+                        logger.debug(f"Successfully processed and committed message: {data}")
+                    else:
+                        logger.warning(f"Insert failed, message will be reprocessed: {data}")
 
-            except Exception as e:
-                logger.error(f"Failed to process message: {e}")
+                except Exception as e:
+                    logger.error(f"Failed to process message: {e}")
+    finally:
+        consumer.close()
 
 if __name__ == "__main__":
     consume_messages()

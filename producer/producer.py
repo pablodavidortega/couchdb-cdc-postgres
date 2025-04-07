@@ -76,9 +76,26 @@ def save_seq_id(database, seq_id):
     except Exception as e:
         logger.error(f"Error occurred saving seq seq_id: {e}")
 
-
+'''
+{
+  "version": "0.0.1",
+  "current_utc_epoch_ms": "1744050907728",
+  "data": {
+    "seq": "4837005-g1AAAACReJzLYWBgYMpgTmHgzcvPy09JdcjLz8gvLskBCScyJNX___8_K4M5iUHlhVYuUIw91cQ8OTHJFF09DhPyWIAkQwOQ-g836Fky2CBDC1Pj5JQUdG1ZAJr5LYY",
+    "id": "20250407152725-3103329",
+    "changes": [
+      {
+        "rev": "1-b9657f4caf57a555c4bcbc958c962793"
+      }
+    ]
+  }
+}
+'''
 def process_change(change_data, counter, save_frequency=1000):
-    message = {"version": "0.0.1", "current_utc_epoch_ms": str(time.time_ns() // 1_000_000), "data": change_data}
+    message = {"version": "0.0.1",
+               "database" : DB_NAME,
+               "current_utc_epoch_ms": str(time.time_ns() // 1_000_000),
+               "data": change_data}
     producer.send(KAFKA_TOPIC, message)
     last_seq_id = change_data.get("seq")
     if counter % save_frequency == 0:
