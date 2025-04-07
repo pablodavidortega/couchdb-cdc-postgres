@@ -24,69 +24,60 @@ DB_NAME = os.getenv("DB_NAME")
 KAFKA_TOPIC = os.getenv("KAFKA_TOPIC")
 POSTGRES_URL = os.getenv("POSTGRES_URL")
 
-conn = psycopg2.connect(POSTGRES_URL)
-logger.info(f"connection parameters: {conn.get_dsn_parameters()}")
-# def get_postgres_connection():
-#     if connection is None:
-#         connection =  psycopg2.connect(POSTGRES_URL)
-#
-#     return connection
-
 def get_last_seq_id(database):
     last_seq = None
     try:
-        # conn = get_postgres_connection()
-        cursor = conn.cursor()
-        cursor.execute(f"SELECT seq_id FROM mydb.db_sequence_id where database = '{database}';")
-        last_seq = cursor.fetchone()
+        # Use 'with' statement to handle connection and cursor automatically
+        with psycopg2.connect(POSTGRES_URL) as conn:
+            logger.info(f"connection parameters: {conn.get_dsn_parameters()}")
+            with conn.cursor() as cursor:
+                cursor.execute(f"SELECT seq_id FROM mydb.db_sequence_id WHERE database = %s;", (database,))
+                last_seq = cursor.fetchone()
     except Exception as e:
         logger.error(f"Error occurred getting last seq_id: {e}")
         time.sleep(1000)
-    finally:
-        cursor.close()
-        conn.close()
+
     return last_seq[0] if last_seq else None
 
 def save_dummy_seq_id(database):
     logger.info(f"Saving dummy seq_id for database: {database}")
     try:
-        conn = get_postgres_connection()
-        cursor = conn.cursor()
-        cursor.execute(f"INSERT INTO mydb.db_sequence_id (database, seq_id) VALUES ('{database}', NULL)")
-        logger.info(f"Saved dummy seq_id for database: {database}")
+        # Use 'with' statement to handle connection and cursor automatically
+        with psycopg2.connect(POSTGRES_URL) as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    "INSERT INTO mydb.db_sequence_id (database, seq_id) VALUES (%s, %s)",
+                    (database, None)
+                )
+                logger.info(f"Saved dummy seq_id for database: {database}")
     except Exception as e:
         logger.error(f"Error occurred saving dummy seq last seq_id: {e}")
         time.sleep(1000)
-    finally:
-        cursor.close()
-        conn.close()
-
 
 def save_seq_id(database, seq_id):
     logger.info(f"Saving sequence id for database {database}")
     try:
-        conn = get_postgres_connection()
-        cursor = conn.cursor()
-        update_query = """
-            UPDATE mydb.db_sequence_id
-            SET seq_id = %s
-            WHERE database = %s;
-            """
-        cursor.execute(update_query, (seq_id,database))
-        conn.commit()
-        logger.info(f"Saved database {database} seq_id: {seq_id}")
-        time.sleep(1)
+        # Use 'with' statement to handle connection and cursor automatically
+        with psycopg2.connect(POSTGRES_URL) as conn:
+            with conn.cursor() as cursor:
+                update_query = """
+                    UPDATE mydb.db_sequence_id
+                    SET seq_id = %s
+                    WHERE database = %s;
+                """
+                cursor.execute(update_query, (seq_id, database))
+                conn.commit()
+                logger.info(f"Saved database {database} seq_id: {seq_id}")
+                time.sleep(1)
     except Exception as e:
         logger.error(f"Error occurred saving seq seq_id: {e}")
-    finally:
-        cursor.close()
-        conn.close()
+
 
 def process_change(change_data, counter, save_frequency = 1000):
     producer.send(KAFKA_TOPIC, change_data)
     last_seq_id = change_data.get("seq")
     if counter % save_frequency == 0:
-        logger.info(f"Reached frequency {save_frequency}, saving to db: {change_data}")
+        logger.info(f"Reached frequency {save_frequency}, saving to db: {change_data}, last_seq_id {last_seq_id}")
         save_seq_id(DB_NAME, last_seq_id)
     logger.debug(f"Sent message to Kafka: {change_data}")
     counter = (counter + 1)%save_frequency
@@ -129,5 +120,3 @@ while True:
     except Exception as e:
         logger.error(f"Error in producer: {e}")
     time.sleep(5)  # Prevent excessive requests
-
-
