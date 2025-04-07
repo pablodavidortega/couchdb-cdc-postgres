@@ -12,6 +12,8 @@ import logging
 '''
 todo it could be worth it do add batchign here 
 in a scenario where we are using monarch messaging to scoot all of this up to ECRT for example, we would want to use batching to send up a large chunk of messages
+batching could be done in batches of 1000
+currently we have 365 bytes per message (including seq number which isnt really useful outside of the edge), we would need to add store number/cluster as well for roughly 250-300B
 '''
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s:%(lineno)d - %(message)s')
@@ -36,6 +38,8 @@ def insert_processed_data(conn, message):
     try:
         with conn.cursor() as cursor:
             document = message.get("document", None)
+            if len(message["data"]["changes"]) > 1:
+                logger.info(f"this guy has more than one changes entry! {message["data"]}")
             cursor.execute(
                 insert_query,
                 (
