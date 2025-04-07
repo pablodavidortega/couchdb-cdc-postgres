@@ -20,14 +20,14 @@ POSTGRES_URL = os.getenv("POSTGRES_URL")
 
 # Helper: Get UTC timestamp from epoch milliseconds
 def epoch_ms_to_utc(ms):
-    return datetime.fromtimestamp(ms / 1000.0, tz=timezone.utc)
+    return datetime.fromtimestamp(float(ms) / 1000.0, tz=timezone.utc)
 
 # Database insert function
 def insert_processed_data(conn, message):
     insert_query = """
         INSERT INTO mydb.processed_data (database, doc_id, change_ts, seq_id, rev, document)
         VALUES (%s, %s, %s, %s, %s, %s)
-        ON CONFLICT (database, doc_id) DO NOTHING;
+        ON CONFLICT (database, doc_id, rev) DO NOTHING;
     """
     try:
         with conn.cursor() as cursor:
@@ -37,7 +37,7 @@ def insert_processed_data(conn, message):
                 (
                     message["database"],  # Make sure 'database' is included in the message
                     message["data"]["id"],
-                    epoch_ms_to_utc(message["change_ts"]),
+                    epoch_ms_to_utc(message["current_utc_epoch_ms"]),
                     message["data"]["seq"],
                     message["data"]["changes"][0]["rev"],
                     document,  # Handles JSONB insertion properly
@@ -47,11 +47,11 @@ def insert_processed_data(conn, message):
         return True
     except Exception as e:
         # Log or print the error if you want
-        print(f"Error inserting processed data: {e}")
+        logger.error(f"Error inserting processed data: {e}")
         return False
 
 # Function to process a single Kafka message
-def process_message(conn, message, consumer):
+def process_message(conn, message):
     data = message.value
     retries = 3
     success = False
@@ -80,7 +80,8 @@ def consume_messages():
         bootstrap_servers=["kafka1:9092", "kafka2:9093", "kafka3:9094"],
         value_deserializer=lambda v: json.loads(v.decode("utf-8")),
         auto_offset_reset='earliest',
-        enable_auto_commit=False  # Manual commit
+        enable_auto_commit=False,  # Manual commit
+        group_id='cdc_group1'
     )
 
     # Create database connection
@@ -88,7 +89,7 @@ def consume_messages():
         logger.info("Consumer and DB connection established. Waiting for messages...")
         try:
             for message in consumer:
-                if process_message(conn, message, consumer):
+                if process_message(conn, message):
                     consumer.commit()
                     logger.debug(f"Successfully processed and committed message: {message.value}")
                 else:
