@@ -35,7 +35,7 @@ def get_last_seq_id(database):
                 last_seq = cursor.fetchone()
     except Exception as e:
         logger.error(f"Error occurred getting last seq_id: {e}")
-        time.sleep(1000)
+        time.sleep(10)
 
     return last_seq[0] if last_seq else None
 
@@ -52,7 +52,7 @@ def save_dummy_seq_id(database):
                 logger.info(f"Saved dummy seq_id for database: {database}")
     except Exception as e:
         logger.error(f"Error occurred saving dummy seq last seq_id: {e}")
-        time.sleep(1000)
+        time.sleep(10)
 
 def save_seq_id(database, seq_id):
     logger.info(f"Saving sequence id for database {database}")
