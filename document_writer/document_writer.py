@@ -7,7 +7,7 @@ import logging
 import datetime
 # Configure logging
 log_level = os.getenv("LOG_LEVEL", "INFO").upper()
-logging.basicConfig(level=getattr(logging, log_level, logging.INFO), format='%(asctime)s - %(levelname)s - %(message)s:%(lineno)d')
+logging.basicConfig(level=getattr(logging, log_level, logging.INFO), format='%(asctime)s - %(levelname)s:%(lineno)d - %(message)s')
 
 
 # Read environment variables

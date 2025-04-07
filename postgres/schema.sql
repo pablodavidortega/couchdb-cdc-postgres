@@ -10,8 +10,9 @@ CREATE TABLE IF NOT EXISTS mydb.db_sequence_id (
 CREATE TABLE IF NOT EXISTS mydb.processed_data (
     database TEXT NOT NULL,
     doc_id TEXT NOT NULL,
-    seq_id TEXT,
-    rev TEXT,
-    data JSONB,
-    PRIMARY KEY (database, doc_id)
+    rev TEXT NOT NULL,
+    change_ts TIMESTAMP NOT NULL,
+    seq_id TEXT NOT NULL,
+    document JSONB,
+    PRIMARY KEY (database, doc_id, rev)
 );

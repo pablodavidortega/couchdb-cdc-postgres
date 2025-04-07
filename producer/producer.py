@@ -8,6 +8,7 @@ import os
 import logging
 
 from requests.auth import HTTPBasicAuth
+
 '''
 todo 
 * consume username/password as envs
@@ -24,6 +25,7 @@ DB_NAME = os.getenv("DB_NAME")
 KAFKA_TOPIC = os.getenv("KAFKA_TOPIC")
 POSTGRES_URL = os.getenv("POSTGRES_URL")
 
+
 def get_last_seq_id(database):
     last_seq = None
     try:
@@ -39,6 +41,7 @@ def get_last_seq_id(database):
 
     return last_seq[0] if last_seq else None
 
+
 def save_dummy_seq_id(database):
     logger.info(f"Saving dummy seq_id for database: {database}")
     try:
@@ -53,6 +56,7 @@ def save_dummy_seq_id(database):
     except Exception as e:
         logger.error(f"Error occurred saving dummy seq last seq_id: {e}")
         time.sleep(10)
+
 
 def save_seq_id(database, seq_id):
     logger.info(f"Saving sequence id for database {database}")
@@ -73,23 +77,28 @@ def save_seq_id(database, seq_id):
         logger.error(f"Error occurred saving seq seq_id: {e}")
 
 
-def process_change(change_data, counter, save_frequency = 1000):
-    producer.send(KAFKA_TOPIC, change_data)
+def process_change(change_data, counter, save_frequency=1000):
+    message = {"version": "0.0.1", "current_utc_epoch_ms": str(time.time_ns() // 1_000_000), "data": change_data}
+    producer.send(KAFKA_TOPIC, message)
     last_seq_id = change_data.get("seq")
     if counter % save_frequency == 0:
         logger.info(f"Reached frequency {save_frequency}, saving to db: {change_data}, last_seq_id {last_seq_id}")
         save_seq_id(DB_NAME, last_seq_id)
-    logger.debug(f"Sent message to Kafka: {change_data}")
-    counter = (counter + 1)%save_frequency
+        logger.info(f"Sent message to Kafka: {message}")
+    else:
+        logger.debug(f"Sent message to Kafka: {change_data}")
+    counter = (counter + 1) % save_frequency
     return last_seq_id, counter
+
 
 def listen_to_changes(url, last_seq_id):
     """Listens to the CouchDB _changes feed in continuous mode."""
-    params = {"feed": "continuous", "include_docs": "false", "heartbeat" : "5000"}
+    params = {"feed": "continuous", "include_docs": "false", "heartbeat": "5000"}
     if last_seq_id is not None:
         params["since"] = last_seq_id
     counter = 0
-    with requests.get(url, stream=True, auth=HTTPBasicAuth("admin", "password"), verify=False, params=params) as response:
+    with requests.get(url, stream=True, auth=HTTPBasicAuth("admin", "password"), verify=False,
+                      params=params) as response:
         if response.status_code == 200:
             for line in response.iter_lines():
                 if line:
@@ -101,6 +110,7 @@ def listen_to_changes(url, last_seq_id):
         else:
             print(f"Failed to connect: {response.status_code} - {response.text}")
             return False
+
 
 producer = KafkaProducer(
     bootstrap_servers=["kafka1:9092", "kafka2:9093", "kafka3:9094"],

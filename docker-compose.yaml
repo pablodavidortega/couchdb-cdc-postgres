@@ -139,17 +139,21 @@ services:
       - ./producer/producer.py:/app/producer.py
     command: ["conda", "run", "--no-capture-output", "-n", "env_name", "python", "producer.py"]
     restart: unless-stopped
-#
-#  consumer:
-#    build: ./consumer
-#    depends_on:
-#      - kafka1
-#      - kafka2
-#      - kafka3
-#      - postgres
-#    environment:
-#      KAFKA_TOPIC: "my-topic"
-#      POSTGRES_URL: "postgresql://user:password@postgres:5432/mydb"
+
+  consumer:
+    build: ./consumer
+    depends_on:
+      - kafka1
+      - kafka2
+      - kafka3
+      - postgres
+    environment:
+      KAFKA_TOPIC: "my-topic"
+      POSTGRES_URL: "postgresql://user:password@postgres:5432/mydb"
+    volumes:
+      - ./consumer/consumer.py:/app/consumer.py
+    command: ["conda", "run", "--no-capture-output", "-n", "env_name", "python", "consumer.py"]
+    restart : unless-stopped
 
 volumes:
   grafana-storage:
