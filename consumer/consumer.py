@@ -28,25 +28,26 @@ def insert_processed_data(conn, message):
         VALUES (%s, %s, %s, %s, %s, %s)
         ON CONFLICT (database, doc_id) DO NOTHING;
     """
-    with conn.cursor() as cursor:
-        cursor.execute(
-            insert_query,
-            (
-                message["database"], # probably need to add database in the other side as well
-                message["doc_id"],
-                epoch_ms_to_utc(message["change_ts"]),
-                message["seq_id"],
-                message["rev"],
-                Json(message["document"]), # check if null
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                insert_query,
+                (
+                    message["database"],  # Make sure 'database' is included in the message
+                    message["doc_id"],
+                    epoch_ms_to_utc(message["change_ts"]),
+                    message["seq_id"],
+                    message["rev"],
+                    Json(message["document"]),  # Handles JSONB insertion properly
+                )
             )
-        )
         conn.commit()
+        return True
+    except Exception as e:
+        # Log or print the error if you want
+        print(f"Error inserting processed data: {e}")
+        return False
 
-# consumer = KafkaConsumer(
-#     KAFKA_TOPIC,
-#     bootstrap_servers=["kafka1:9092", "kafka2:9093", "kafka3:9094"],
-#     value_deserializer=lambda v: json.loads(v.decode("utf-8"))
-# )
 
 logger.info("Kafka Consumer started")
 
@@ -56,8 +57,8 @@ def consume_messages():
         KAFKA_TOPIC,
         bootstrap_servers=["kafka1:9092", "kafka2:9093", "kafka3:9094"],
         value_deserializer=lambda v: json.loads(v.decode("utf-8")),
-        auto_offset_reset='earliest',  # Optional: depends on your needs
-        enable_auto_commit=False       # Optional
+        auto_offset_reset='earliest',
+        enable_auto_commit=False  # Manual commit mode
     )
 
     with consumer, psycopg2.connect(POSTGRES_URL) as conn:
@@ -65,8 +66,15 @@ def consume_messages():
         for message in consumer:
             try:
                 data = message.value
-                insert_processed_data(conn, data)
-                logger.debug(f"Processed message: {data}")
+                is_success = insert_processed_data(conn, data)
+
+                if is_success:
+                    # Manually commit the offset after successful DB commit
+                    consumer.commit()
+                    logger.debug(f"Successfully processed and committed message: {data}")
+                else:
+                    logger.warning(f"Insert failed, message will be reprocessed: {data}")
+
             except Exception as e:
                 logger.error(f"Failed to process message: {e}")
 
