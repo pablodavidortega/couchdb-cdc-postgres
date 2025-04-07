@@ -14,7 +14,7 @@ todo
 * consume username/password as envs
 * create row for db if one is not there
 * see about fault tolerance? 
-
+* create a version of this producer for the cloud which pulls documents as well... can have it running from the other machine...
 '''
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s:%(lineno)d - %(message)s')

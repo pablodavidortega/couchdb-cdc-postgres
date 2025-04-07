@@ -9,7 +9,10 @@ from kafka import KafkaConsumer
 import os
 import logging
 
-
+'''
+todo it could be worth it do add batchign here 
+in a scenario where we are using monarch messaging to scoot all of this up to ECRT for example, we would want to use batching to send up a large chunk of messages
+'''
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s:%(lineno)d - %(message)s')
 logger = logging.getLogger(__name__)
@@ -21,6 +24,7 @@ POSTGRES_URL = os.getenv("POSTGRES_URL")
 # Helper: Get UTC timestamp from epoch milliseconds
 def epoch_ms_to_utc(ms):
     return datetime.fromtimestamp(float(ms) / 1000.0, tz=timezone.utc)
+
 
 # Database insert function
 def insert_processed_data(conn, message):
@@ -50,6 +54,7 @@ def insert_processed_data(conn, message):
         logger.error(f"Error inserting processed data: {e}")
         return False
 
+
 # Function to process a single Kafka message
 def process_message(conn, message):
     data = message.value
@@ -69,7 +74,6 @@ def process_message(conn, message):
         logger.error(f"Failed to process message after {retries} retries: {data}")
 
     return success
-
 
 
 # Main consumer loop
@@ -99,6 +103,7 @@ def consume_messages():
         finally:
             consumer.close()
             logger.info("Kafka consumer closed.")
+
 
 if __name__ == "__main__":
     logger.info("Kafka Consumer started")
