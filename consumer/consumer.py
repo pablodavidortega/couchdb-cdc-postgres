@@ -1,5 +1,6 @@
 # consumer.py
 import json
+import time
 from datetime import datetime, timezone
 
 import psycopg2
@@ -49,37 +50,55 @@ def insert_processed_data(conn, message):
         print(f"Error inserting processed data: {e}")
         return False
 
+# Function to process a single Kafka message
+def process_message(conn, message, consumer):
+    data = message.value
+    retries = 3
+    success = False
 
-logger.info("Kafka Consumer started")
+    # Retry logic for message processing
+    for _ in range(retries):
+        if insert_processed_data(conn, data):
+            success = True
+            break
+        else:
+            logger.warning(f"Retrying message: {data}...")
+            time.sleep(2)  # Sleep before retrying
+
+    if not success:
+        logger.error(f"Failed to process message after {retries} retries: {data}")
+
+    return success
+
+
 
 # Main consumer loop
+# Function to consume and process Kafka messages
 def consume_messages():
     consumer = KafkaConsumer(
         KAFKA_TOPIC,
         bootstrap_servers=["kafka1:9092", "kafka2:9093", "kafka3:9094"],
         value_deserializer=lambda v: json.loads(v.decode("utf-8")),
         auto_offset_reset='earliest',
-        enable_auto_commit=False
+        enable_auto_commit=False  # Manual commit
     )
 
-    try:
-        with psycopg2.connect(POSTGRES_URL) as conn:
-            logger.info("Consumer and DB connection established. Waiting for messages...")
+    # Create database connection
+    with psycopg2.connect(POSTGRES_URL) as conn:
+        logger.info("Consumer and DB connection established. Waiting for messages...")
+        try:
             for message in consumer:
-                try:
-                    data = message.value
-                    is_success = insert_processed_data(conn, data)
-
-                    if is_success:
-                        consumer.commit()
-                        logger.debug(f"Successfully processed and committed message: {data}")
-                    else:
-                        logger.warning(f"Insert failed, message will be reprocessed: {data}")
-
-                except Exception as e:
-                    logger.error(f"Failed to process message: {e}")
-    finally:
-        consumer.close()
+                if process_message(conn, message, consumer):
+                    consumer.commit()
+                    logger.debug(f"Successfully processed and committed message: {message.value}")
+                else:
+                    logger.warning(f"Insert failed for message, will reprocess: {message.value}")
+        except Exception as e:
+            logger.error(f"Consumer error: {e}")
+        finally:
+            consumer.close()
+            logger.info("Kafka consumer closed.")
 
 if __name__ == "__main__":
+    logger.info("Kafka Consumer started")
     consume_messages()
