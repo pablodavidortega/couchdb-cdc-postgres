@@ -16,7 +16,7 @@ todo
 
 '''
 # Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s:%(lineno)d')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s:%(lineno)d - %(message)s')
 logger = logging.getLogger(__name__)
 
 COUCHDB_URL = os.getenv("COUCHDB_URL")
@@ -24,35 +24,65 @@ DB_NAME = os.getenv("DB_NAME")
 KAFKA_TOPIC = os.getenv("KAFKA_TOPIC")
 POSTGRES_URL = os.getenv("POSTGRES_URL")
 
-def get_postgres_connection():
-    return psycopg2.connect(POSTGRES_URL)
+conn = psycopg2.connect(POSTGRES_URL)
+logger.info(f"connection parameters: {conn.get_dsn_parameters()}")
+# def get_postgres_connection():
+#     if connection is None:
+#         connection =  psycopg2.connect(POSTGRES_URL)
+#
+#     return connection
 
 def get_last_seq_id(database):
-    conn = get_postgres_connection()
-    cursor = conn.cursor()
-    cursor.execute('SET search_path TO mydb;')
-    cursor.execute(f"SELECT seq_id FROM db_sequence_id where database = '{database}';")
-    last_seq = cursor.fetchone()
-    cursor.close()
-    conn.close()
+    last_seq = None
+    try:
+        # conn = get_postgres_connection()
+        cursor = conn.cursor()
+        cursor.execute(f"SELECT seq_id FROM mydb.db_sequence_id where database = '{database}';")
+        last_seq = cursor.fetchone()
+    except Exception as e:
+        logger.error(f"Error occurred getting last seq_id: {e}")
+        time.sleep(1000)
+    finally:
+        cursor.close()
+        conn.close()
     return last_seq[0] if last_seq else None
 
-def save_seq_id(database, seq_id):
-    conn = get_postgres_connection()
-    cursor = conn.cursor()
-    cursor.execute('SET search_path TO mydb;')
-    update_query = """
-        UPDATE db_sequence_id
-        SET seq_id = %s
-        WHERE database = %s;
-        """
-    cursor.execute(update_query, (database,seq_id))
-    conn.commit()
-    cursor.close()
-    conn.close()
-    logger.info(f"Saved database {database} seq_id: {seq_id}")
+def save_dummy_seq_id(database):
+    logger.info(f"Saving dummy seq_id for database: {database}")
+    try:
+        conn = get_postgres_connection()
+        cursor = conn.cursor()
+        cursor.execute(f"INSERT INTO mydb.db_sequence_id (database, seq_id) VALUES ('{database}', NULL)")
+        logger.info(f"Saved dummy seq_id for database: {database}")
+    except Exception as e:
+        logger.error(f"Error occurred saving dummy seq last seq_id: {e}")
+        time.sleep(1000)
+    finally:
+        cursor.close()
+        conn.close()
 
-def process_change(change_data, counter, save_frequency = 100):
+
+def save_seq_id(database, seq_id):
+    logger.info(f"Saving sequence id for database {database}")
+    try:
+        conn = get_postgres_connection()
+        cursor = conn.cursor()
+        update_query = """
+            UPDATE mydb.db_sequence_id
+            SET seq_id = %s
+            WHERE database = %s;
+            """
+        cursor.execute(update_query, (seq_id,database))
+        conn.commit()
+        logger.info(f"Saved database {database} seq_id: {seq_id}")
+        time.sleep(1)
+    except Exception as e:
+        logger.error(f"Error occurred saving seq seq_id: {e}")
+    finally:
+        cursor.close()
+        conn.close()
+
+def process_change(change_data, counter, save_frequency = 1000):
     producer.send(KAFKA_TOPIC, change_data)
     last_seq_id = change_data.get("seq")
     if counter % save_frequency == 0:
@@ -90,6 +120,8 @@ logger.info("Kafka Producer started")
 while True:
     last_seq_id = get_last_seq_id(DB_NAME)
     logger.info(f"Starting from seq_id: {last_seq_id}")
+    if last_seq_id is None:
+        save_dummy_seq_id(DB_NAME)
     url = f"{COUCHDB_URL}/{DB_NAME}/_changes"
     logger.info(f"Using URL {url}")
     try:
