@@ -98,9 +98,12 @@ async def listen_to_changes(session: ClientSession, producer, pool, database: st
     try:
         async with session.get(url, auth=auth, params=params, timeout=None, ssl=False) as resp:
             async for line in resp.content:
-                if line and line.decode('utf-8') is not None:
+                if line:
                     try:
-                        change_data = json.loads(line.decode('utf-8'))
+                        decoded_line = line.decode('utf-8').strip()
+                        if not decoded_line:
+                            continue  # skip heartbeats
+                        change_data = json.loads(decoded_line)
                         last_seq_id, counter = await process_change(producer, pool, database, change_data, counter)
                     except Exception as e:
                         logger.error(f"Error processing change for {database}: {e}")
