@@ -146,6 +146,8 @@ services:
       - postgres
     environment:
       COUCHDB_URL: "http://couchdb:5984"
+      COUCHDB_USERNAME: "admin"
+      COUCHDB_PASSWORD: "password"
       DB_NAME : "mydb"
       DB_NAMES : "mydb,test_db-2"
       KAFKA_TOPIC: "my-topic"
