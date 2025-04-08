@@ -39,7 +39,7 @@ def write_documents():
             response = requests.put(f"{COUCHDB_URL}/{DB_NAME}/{doc_id}", auth=AUTH, headers=HEADERS, data=json.dumps(doc))
 
             if response.status_code in [201, 202]:
-                logging.info(f"Successfully written document ID {doc_id}")
+                logging.debug(f"Successfully written document ID {doc_id}")
             else:
                 logging.error(f"Error writing document {doc_id}: {response.text}")
         except Exception as e:

@@ -123,6 +123,20 @@ services:
       - ./document_writer/document_writer.py:/app/document_writer.py
     command: ["conda", "run", "--no-capture-output", "-n", "env_name", "python", "document_writer.py"]
 
+  document_writer-2:
+    build: ./document_writer
+    depends_on:
+      - couchdb
+    environment:
+      COUCHDB_URL: "http://couchdb:5984"
+      COUCHDB_USER: "admin"
+      COUCHDB_PASSWORD: "password"
+      DB_NAME: "test_db-2"
+      LOG_LEVEL: "WARNING"
+    volumes:
+      - ./document_writer/document_writer.py:/app/document_writer.py
+    command: [ "conda", "run", "--no-capture-output", "-n", "env_name", "python", "document_writer.py" ]
+
   producer:
     build: ./producer
     depends_on:
@@ -133,11 +147,13 @@ services:
     environment:
       COUCHDB_URL: "http://couchdb:5984"
       DB_NAME : "mydb"
+      DB_NAMES : "mydb,test_db-2"
       KAFKA_TOPIC: "my-topic"
       POSTGRES_URL: "postgresql://user:password@postgres:5432/mydb"
     volumes:
       - ./producer/producer.py:/app/producer.py
-    command: ["conda", "run", "--no-capture-output", "-n", "env_name", "python", "producer.py"]
+      - ./producer/producer_async.py:/app/producer_async.py
+    command: ["conda", "run", "--no-capture-output", "-n", "env_name", "python", "producer_async.py"]
     restart: unless-stopped
 
   consumer:

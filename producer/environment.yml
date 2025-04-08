@@ -7,6 +7,12 @@ dependencies:
   - requests
   - psycopg2-binary
   - kafka-python
+  - aiohttp
+  - asyncpg
+  - python-dotenv
+  - kafka-python  # Optional: if you still want CLI tools
   - pip
   - pip:
-      - requests
+    - requests
+    - uvloop  # Optional: faster asyncio event loop for Linux/macOS
+    - aiokafka
